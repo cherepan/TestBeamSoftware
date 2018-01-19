@@ -58,7 +58,7 @@ void HitsAnalysis::eventLoop()
     clearEvent();
     Long64_t ientry = analysisTree()->GetEntry(jentry);
     if (ientry < 0) break;
-    if (jentry%1000 == 0) {
+    if (jentry%100 == 0) {
       cout << " Events processed. " << std::setw(8) << jentry
 	   << endl;
     }
