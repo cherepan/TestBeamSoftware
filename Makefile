@@ -1,5 +1,5 @@
 UNAME    = $(shell uname)
-EXE      = baselineReco alignmentReco 
+EXE      = baselineReco alignmentReco baselineHits  
 #deltaClusAnalysis 
  
 VPATH  = .:./interface
@@ -23,7 +23,7 @@ CXX       = g++
 
 HDRS_DICT = interface/Hit.h interface/Cluster.h interface/Cbc.h interface/Stub.h interface/Track.h interface/Event.h interface/LinkDef.h
 
-bin: baselineReco alignmentReco 
+bin: baselineReco alignmentReco baselineHits 
 #deltaClusAnalysis
 
 all: 
@@ -45,6 +45,10 @@ BaselineAnalysis.o : src/BaselineAnalysis.cc
 	$(CXX)  $(CXXFLAGS) `root-config --cflags` -o $@ -c $<
 	mv $@ ../src/
 
+HitsAnalysis.o : src/HitsAnalysis.cc
+	$(CXX)  $(CXXFLAGS) `root-config --cflags` -o $@ -c $<
+	mv $@ ../src/
+
 AlignmentMultiDimAnalysis.o : src/AlignmentMultiDimAnalysis.cc
 	$(CXX)  $(CXXFLAGS) -Wdeprecated-declarations `root-config --cflags` -o $@ -c $<
 	mv $@ ../src/
@@ -55,6 +59,10 @@ baselineReco:   src/baselineReco.cc $(OBJS) src/BaselineAnalysis.o src/Dict.o
 
 alignmentReco:   src/alignmentReco.cc $(OBJS) src/AlignmentMultiDimAnalysis.o src/Dict.o
 	$(CXX) $(CXXFLAGS) `root-config --cflags` $(LDFLAGS) $^ -o $@ $(LIBS) `root-config --libs ` -lMinuit2
+
+
+baselineHits:   src/baselineHits.cc $(OBJS) src/HitsAnalysis.o src/Dict.o
+	$(CXX) $(CXXFLAGS) `root-config --cflags` $(LDFLAGS) $^ -o $@ $(LIBS) `root-config --libs`
 
 #deltaClusAnalysis: src/dclusAnalysis.cc $(OBJS) src/DeltaClusterAnalysis.o src/Dict.o
 #	$(CXX) $(CXXFLAGS) `root-config --cflags` $(LDFLAGS) $^ -o $@ $(LIBS) `root-config --libs`

@@ -1,7 +1,7 @@
 #START
 Run=133
 inputFile=AnalysisTree_000133.root
-outputFile=test.root
+outputFile=Hits.root
 //Run=926:zD0=657.622:offsetD0=2.42379:zD1=659.481:offsetD1=2.40335
 fei4Z=688
 d0minZ=657.622
