@@ -1,8 +1,9 @@
 /*!
   \file                HitsAnalysis.cc
-  \author              Vladimir Cherepanov
-  \date                18/01/18
-
+  \brief               Example user code for Analysis
+  \author              Suvankar Roy Chowdhury, Rajarshi Bhattacharya
+  \date                05/07/16
+  Support :            mail to : suvankar.roy.chowdhury@cern.ch, rajarshi.bhattacharya@cern.ch
 */
 #include "TROOT.h"
 #include "TInterpreter.h"
@@ -27,16 +28,14 @@ HitsAnalysis::HitsAnalysis() :
 }
 void HitsAnalysis::bookHistograms() {
   BeamAnaBase::bookHistograms();
- 
   for(auto& m : *modVec()){
     //std::cout << "Detidbottom=" << m.hdirbottom_ << std::endl;
     TString s = TString(m.hdirbottom_);
     hist_->bookTrackMatchHistograms(s);
     s = TString(m.hdirtop_);
     hist_->bookTrackMatchHistograms(s);
+    hist_->bookHitsRelatedHistograms();
   }
-  std::cout<<"is called "<<std::endl;
-  hist_->bookHitsRelatedHistograms();
 }
 
 void HitsAnalysis::beginJob() {
@@ -57,11 +56,10 @@ void HitsAnalysis::eventLoop()
   cout << "#Events=" << nEntries_ <<" -->  MAX EVENTS TO BE PROCESSED : "<< maxEvent_ <<endl;
   hist_->fillHist1D("EventInfo","nevents", nEntries_);
 
+  long int den = 0;
+  long int nClsb = 0, nClst = 0, numstub = 0;
   for (Long64_t jentry=0; jentry < maxEvent_; jentry++) {
     clearEvent();
-
-    //    if(event()->tracks.size()==1){
-  
     Long64_t ientry = analysisTree()->GetEntry(jentry);
     if (ientry < 0) break;
     if (jentry%1000 == 0) {
@@ -76,10 +74,6 @@ void HitsAnalysis::eventLoop()
       //hist_->fillHist1D("EventInfo","offset", cbcOffset2());
       //hist_->fillHist1D("EventInfo","window", event()->cwd);
       //hist_->fillHist1D("EventInfo","tilt", static_cast<unsigned long int>(condEv()->tilt));
-
-
-
-      cout << "Alignment Parameters" << aLparameteres();
       for(auto& cm: event()->conddatamap){
         uint8_t uid = (cm.first >> 24) & MASK_BITS_8;
         uint8_t i2cReg  = (cm.first >> 16)  & MASK_BITS_8;
@@ -96,17 +90,107 @@ void HitsAnalysis::eventLoop()
         //if(uid == 1)
         //  std::cout << "Value for uid=1>>>" << (int)cm.second << std::endl;
       }
-
     }
-    hist_->fillHist1D("HitsRelated","numberTracks", event()->tracks.size());
-    const auto& d0c0 = (*modVec())[0].bottomHits;
-    const auto& d1c0 = (*modVec())[0].topHits;
-    hist_->fillHist2D("HitsRelated", "NTracksVsBottomHits", event()->tracks.size(), d0c0.size());
-    hist_->fillHist2D("HitsRelated", "NTracksVsUpperHits", event()->tracks.size(), d1c0.size());
+
+ 
+	//----------------- check allignment--------------------
+
+	int nStrips = (*modVec())[0].nstrips_;
+	double DUT_z = (*modVec())[0].z;
+
+	setDetChannelVectors();
+	const auto& d0c0 = (*modVec())[0].bottomHits;
+	const auto& d1c0 = (*modVec())[0].topHits;
+	const auto& d0Cls = (*modVec())[0].bottomOfflineCls;
+	const auto& d1Cls = (*modVec())[0].topOfflineCls;
+	
+	std::vector<tbeam::OfflineTrack>  selectedTk = event()->tracks;
+	if (selectedTk.size()!=1) continue;
+	if (selectedTk[0].chi2()>5.) continue;
+	
+
+	double    deltaZ= 906.337945172601;
+	double    offset_d0= -18622.9485411593;
+	double    phi_d0= -0.506922749477349;
+	double    phi_d1= -0.505474817988975;
+	double    shiftPlan= 22.7418918040401;
+	double    theta= 0.145308624995022;
+	double    zDUT_d0= -576546.120619111;
+
+	//from Nicolas slide
+	// "deltaZ": 1730.337945172601,
+	// "offset_d0": -18622.9485411593,
+	// "phi_d0": -0.506922749477349,
+	// "phi_d1": -0.505474817988975,
+	// "shiftPlanes": 22.7418918040401,
+	// "theta": 0.145308624995022,
+	// "zDUT_d0": -326546.120619111
+
+
+	std::pair<double, double> TrackPosAtDUT = Utility::extrapolateTrackAtDUTwithAngles(selectedTk[0], telPlaneprev_.z, 
+											   offset_d0, zDUT_d0,deltaZ, theta, shiftPlan, phi_d0, phi_d1);
+	
+	double D0xDUT;
+	double D1xDUT;
+	
+	if (d0Cls.size()==1){
+	  for(auto& cl : d0Cls ) {
+	    D0xDUT = (cl.center()-nStrips/2)*dutpitch();
+	    D0xDUT = -D0xDUT;
+	    if (cl.size()==1) {hist_->fillHist1D("HitsRelated","d0_1tk1Cls_1Hit_diffX_afterAlignment", D0xDUT-TrackPosAtDUT.first/1000.); }
+	    if (cl.size()==2) hist_->fillHist1D("HitsRelated","d0_1tk2Cls_1Hit_diffX_afterAlignment", D0xDUT-TrackPosAtDUT.first/1000.);
+	    hist_->fillHist1D("HitsRelated","d0_1tk1Cls_allHit_diffX_afterAlignment", D0xDUT-TrackPosAtDUT.first/1000.);
+	  }
+	}
+	
+	
+	
+	if (d1Cls.size()==1){
+	  for(auto& cl : d1Cls ) {
+	    D1xDUT = (cl.center()-nStrips/2)*dutpitch();
+	    D1xDUT = -D1xDUT;
+	    if (cl.size()==1) hist_->fillHist1D("HitsRelated","d1_1tk1Cls_1Hit_diffX_afterAlignment", D1xDUT-TrackPosAtDUT.second/1000.);
+	    if (cl.size()==2) hist_->fillHist1D("HitsRelated","d1_1tk2Cls_1Hit_diffX_afterAlignment", D1xDUT-TrackPosAtDUT.second/1000.);
+	    hist_->fillHist1D("HitsRelated","d1_1tk1Cls_allHit_diffX_afterAlignment", D1xDUT-TrackPosAtDUT.second/1000.);
+	  }
+	}
+	
+
+
+	hist_->fillHist1D("HitsRelated","numberTracks", event()->tracks.size());
+	hist_->fillHist2D("HitsRelated", "NTracksVsBottomHits", event()->tracks.size(), d0c0.size());
+	hist_->fillHist2D("HitsRelated", "NTracksVsUpperHits", event()->tracks.size(), d1c0.size());
+	
+	
+	// resultBothPlanesConstraintShiftPhi[0] = offsetbottom();
+	// resultBothPlanesConstraintShiftPhi[1] = zDUTbottom();  
+	// resultBothPlanesConstraintShiftPhi[2] = sensordeltaZ();
+	// resultBothPlanesConstraintShiftPhi[3] = dutangle();
+	// resultBothPlanesConstraintShiftPhi[4] = shiftPlanes();
+	// resultBothPlanesConstraintShiftPhi[5] = bottomsensorPhi();
+	// resultBothPlanesConstraintShiftPhi[6] = topsensorPhi();
+	
+
+	// std::pair<double, double> xTkAtDUT11 = Utility::extrapolateTrackAtDUTwithAngles(selectedTk[0], refPlaneZ, offsetbottom(), resultBothPlanesConstraintShiftPhi[1], resultBothPlanesConstraintShiftPhi[2], resultBothPlanesConstraintShiftPhi[3], resultBothPlanesConstraintShiftPhi[4], resultBothPlanesConstraintShiftPhi[5], resultBothPlanesConstraintShiftPhi[6]);
+
+	//	std::vector<tbeam::OfflineTrack> selectedTk = event()->tracks;
     if(event()->tracks.size()==1)
       {
-	std::vector<tbeam::OfflineTrack> selectedTk = event()->tracks;
+	setDetChannelVectors();
+	const auto& d0c0 = (*modVec())[0].bottomHits;
+	const auto& d1c0 = (*modVec())[0].topHits;
+	const auto& d0Cls = (*modVec())[0].bottomOfflineCls;
+	const auto& d1Cls = (*modVec())[0].topOfflineCls;
+	
+	std::vector<tbeam::OfflineTrack>  selectedTk = event()->tracks;
+	if (selectedTk.size()!=1) continue;
+	if (selectedTk[0].chi2()>5.) continue;
 
+
+	auto& tk = event()->tracks[0];
+
+
+	//	std::pair<double, double> xTkAtDUT11 = Utility::extrapolateTrackAtDUTwithAngles(selectedTk[0], refPlaneZ, resultBothPlanesConstraintShiftPhi[0], resultBothPlanesConstraintShiftPhi[1], resultBothPlanesConstraintShiftPhi[2], resultBothPlanesConstraintShiftPhi[3], resultBothPlanesConstraintShiftPhi[4], resultBothPlanesConstraintShiftPhi[5], resultBothPlanesConstraintShiftPhi[6]);
 	if (selectedTk[0].chi2()<5.){
 
 	  
@@ -141,6 +225,21 @@ void HitsAnalysis::eventLoop()
 	    if(d0c0.size()==9) x0=(d0c0[0].strip() + d0c0[8].strip())*0.5;
 	    if(d1c0.size()==9) x1=(d1c0[0].strip() + d1c0[8].strip())*0.5;
 
+	    if (d0Cls.size()==1){
+	      for(auto& cl : d0Cls ) {
+		float	D0xDUT = (cl.center()-nStrips/2)*dutpitch();
+		D0xDUT = -D0xDUT;
+		if (cl.size()==1) hist_->fillHist1D("HitsRelated","AllignmentTest", D0xDUT-TrackPosAtDUT.first/1000.);
+	      }
+	    }
+       
+	    //hist_->fillHist1D(dnamebottom, "d0_1tk1Hit_diffX_start", xDUT-xTkAtDUT/1000.);
+
+
+	    if(d0c0.size() ==1){
+	      float xDUT = (d0c0[0].strip() - nStrips/2) * dutpitch();
+	      //  std::cout<<"xDut "<< xDUT <<" trackatDut  "<<TrackPosAtDUT.first/1000. <<std::endl;
+	    }
 
 	    hist_->fillHist1D("HitsRelated","UpDownHitsDeltaPos", x0-x1);
 	   
@@ -151,50 +250,91 @@ void HitsAnalysis::eventLoop()
 	    // std::cout<<"   size 1 "<< d1c0.size() << " strip  "  << d1c0[0].strip()<<std::endl;
 
 
-	    std::cout<<"sizes:    "<< d0c0.size() << "    " <<d1c0.size() <<" strip  "  << d0c0[0].strip()<<"   " <<d1c0[0].strip()<<std::endl;
+	    //	    std::cout<<"sizes:    "<< d0c0.size() << "    " <<d1c0.size() <<" strip  "  << d0c0[0].strip()<<"   " <<d1c0[0].strip()<<std::endl;
 	  }
 	}
       }
 
 
-	hist_->fillHist1D("EventInfo","condData", static_cast<unsigned int>(event()->condData));
-	hist_->fillHist1D("EventInfo","tdcPhase", static_cast<unsigned int>(event()->tdcPhase));
-	//set the hits/cluster/stubs from the sensors in user accessable module
-	setDetChannelVectors();
-	//fill common histograms for dut hits, clusters
-	fillCommonHistograms();
-	//Fill track match histograms
-	for(auto& m : *modVec()){
-	  std::string dnamebottom = m.hdirbottom_ + "/TrackMatch";
-	  //loop over tracks
-	  for(auto& tk: event()->tracks) {
-	    //previous hit
-	    float xtk_prev = tk.xPosPrevHit() + std::abs(m.z - telPlaneprev_.z)*tk.dxdz();
-	    float ytk_prev = tk.yPosPrevHit() + std::abs(m.z - telPlaneprev_.z)*tk.dydz();
-	    hist_->fillHist1D(dnamebottom, "tkposx_prev", xtk_prev/1000.);
-	    hist_->fillHist1D(dnamebottom, "tkposy_prev", ytk_prev/1000.);
-	    //next hit
-	    float xtk_next = tk.xPosNextHit() + std::abs(m.z - telPlaneprev_.z)*tk.dxdz();
-	    float ytk_next = tk.yPosNextHit() + std::abs(m.z - telPlaneprev_.z)*tk.dydz();
-	    hist_->fillHist1D(dnamebottom, "tkposx_next", xtk_next/1000.);
-	    hist_->fillHist1D(dnamebottom, "tkposy_next", ytk_next/1000.);
-	    //Fill hit residuals
-	    for(auto& h: m.bottomHits) {
-	      float hx = (h.strip() - m.nstrips_/2.)*m.pitch_;
-	      hist_->fillHist1D(dnamebottom, "hitresidualX_prev", hx - xtk_prev/1000.);
-	      hist_->fillHist1D(dnamebottom, "hitresidualX_next", hx - xtk_next/1000.);
-	    }
-	    //Fill cluster residuals
-	    for(auto& c: m.bottomOfflineCls) {
-	      float cx = (c.center() - m.nstrips_/2.)*m.pitch_;
-	      hist_->fillHist1D(dnamebottom, "clusresidualX_prev", cx - xtk_prev/1000.);
-	      hist_->fillHist1D(dnamebottom, "clusresidualX_next", cx - xtk_next/1000.);
-	    }
-	  }
-	}
-      
-    //}
-  }
+
+
+
+    hist_->fillHist1D("EventInfo","condData", static_cast<unsigned int>(event()->condData));
+    hist_->fillHist1D("EventInfo","tdcPhase", static_cast<unsigned int>(event()->tdcPhase));
+    //set the hits/cluster/stubs from the sensors in user accessable module
+    setDetChannelVectors();
+    //fill common histograms for dut hits, clusters
+    fillCommonHistograms();
+    //Fill track match histograms
+    float resultBothPlanesConstraintShift[] = {-18.8072, -114101., 2400.02, -0.980538, 18.5594};
+    //Select events with one track
+    if ( event()->tracks.size() !=1 ) continue;
+    auto& tk = event()->tracks[0];
+    //Select tracks with chi2 > 5
+    if (tk.chi2()>5.) continue;
+    den++;
+    auto& m = modVec()->at(0);
+
+    std::string dnamebottom = m.hdirbottom_ + "/TrackMatch";
+    std::string dnametop    = m.hdirtop_ + "/TrackMatch";
+    //extrapolate the track. x direction is accross the strips
+    //xTkAtDUT is a pair of the extrapolated position of the tk in the two planes of the module
+    //xTkAtDUT.first will give the position of the track on  bottom sensor
+    //xTkAtDUT.second will give the position of the track on top sensor
+    // std::pair<double, double> xTkAtDUT = Utility::extrapolateTrackAtDUTwithAngles(tk, m.z, offsetbottom(), zDUTbottom(), sensordeltaZ(), dutangle(), shiftPlanes());
+    std::pair<double, double> xTkAtDUT = Utility::extrapolateTrackAtDUTwithAngles(tk, telPlaneprev_.z, offsetbottom(), zDUTbottom(),sensordeltaZ(), dutangle(), shiftPlanes(), bottomsensorPhi(), topsensorPhi());
+    //std::cout<<"first second   "<< xTkAtDUT.first<<"  "<< xTkAtDUT.second <<std::endl;
+    //extrapolate along y direction
+    float yTkAtDUT_bottom = tk.yPos(); + (zDUTbottom() - m.z)*tk.dydz();
+    float yTkAtDUT_top    = tk.yPos(); + (zDUTbottom() + sensordeltaZ() - m.z)*tk.dydz();
+    hist_->fillHist1D(dnamebottom, "tkposx", xTkAtDUT.first);
+    hist_->fillHist1D(dnametop,    "tkposx", xTkAtDUT.second); 
+    //convert tk xpos to strip number
+    int xTkAtDUT_strip_bottom = xTkAtDUT.first/m.pitch_  + m.nstrips_/2.;
+    int xTkAtDUT_strip_top    = xTkAtDUT.second/m.pitch_ + m.nstrips_/2.;
+
+    //  std::cout<<" xTkAtDUT_strip_bottom  "<< xTkAtDUT_strip_bottom <<"   "<< xTkAtDUT_strip_top <<std::endl;
+
+
+    hist_->fillHist1D(dnamebottom, "trackpos_strip", xTkAtDUT_strip_bottom);
+    hist_->fillHist1D(dnametop,    "trackpos_strip", xTkAtDUT_strip_top); 
+
+    bool mCls_bottom = false;
+    bool mCls_top = false;
+    bool mOfflinestub = false;   
+    //Fill cluster residuals
+    for(auto& c: m.bottomOfflineCls) {
+      float cx = -1.*(c.center() - m.nstrips_/2.)*m.pitch_;
+      hist_->fillHist1D(dnamebottom, "clusresidualX", cx - xTkAtDUT.first);//xTkAtDUT.first since bottom sensor
+      if(std::abs(cx - xTkAtDUT.first) < 100.)    {
+        mCls_bottom = true;
+        hist_->fillHist2D(dnamebottom, "moduleSize_Cluster", c.center(), yTkAtDUT_bottom/1000.);
+        hist_->fillHist1D(dnamebottom, "matchedclusterpos_strip", c.center()); 
+      }
+    }
+
+    for(auto& c: m.topOfflineCls) {
+      float cx = -1.*(c.center() - m.nstrips_/2.)*m.pitch_;
+      hist_->fillHist1D(dnamebottom, "clusresidualX", cx - xTkAtDUT.second);//xTkAtDUT.second since top sensor
+      if(std::abs(cx - xTkAtDUT.first) < 100.)  {
+        mCls_top = true;
+        hist_->fillHist2D(dnametop, "moduleSize_Cluster", c.center(), yTkAtDUT_top/1000.);
+        hist_->fillHist1D(dnametop, "matchedclusterpos_strip", c.center());
+      }
+    }
+    //stub residual
+    for(auto& s: m.offlineStubs) {
+      float sx = -1.*(s.positionX() - m.nstrips_/2.)*m.pitch_;
+      hist_->fillHist1D(dnamebottom, "stubresidualX", sx - xTkAtDUT.first);//xTkAtDUT.first since bottom sensor
+      if(std::abs(sx - xTkAtDUT.first) < 100.)    mOfflinestub = true;
+    }
+    
+    //Increment counters if matching is found
+    if(mCls_bottom)   nClsb++;
+    if(mCls_top)      nClst++;
+    if(mOfflinestub)  numstub++;
+  }//event Loop end
+  std::cout << "Den=" << den << "\t#ClustersBottom=" << nClsb << "\t#ClustersTop=" << nClst << "\tStub=" << numstub << std::endl;
 
 }
 
