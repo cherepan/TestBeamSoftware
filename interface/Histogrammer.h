@@ -31,7 +31,7 @@ class Histogrammer {
 
     //histograms for common track propoerties
     void bookTrackCommonHistograms();
-
+    void bookHitsRelatedHistograms();
     //Histograms to be used by alignment analysis
     void bookTrackFitHistograms(TString& detId, float zMin = 0., float zStep = 0., int zNsteps = 0);
     void FillAlignmentOffsetVsZ(const char*, const char*, int, float, float, float);

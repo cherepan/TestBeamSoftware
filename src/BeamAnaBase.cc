@@ -179,6 +179,7 @@ void BeamAnaBase::setTelMatching(const bool mtel) {
 
 void BeamAnaBase::bookHistograms() {
   hist_->bookEventHistograms();
+ 
   for(auto& m : *modVec()){
     hist_->bookDUTHistograms(m.hdirbottom_);
     hist_->bookDUTHistograms(m.hdirtop_);

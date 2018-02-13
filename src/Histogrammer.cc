@@ -324,6 +324,28 @@ void Histogrammer::bookCorrelationHistoForColumn(TString c) {
   //new TH1I("nclusterdiff" + c,"Difference in #clusters between dut0 and dut1() for " + c + ";#cluster_{det0} - #cluster_  {det1_};Events",20,-0.5,19.5);
 }
 
+
+void Histogrammer::bookHitsRelatedHistograms()
+{
+  int nStrips = 254;
+  TString dname =  "HitsRelated";
+  //std::cout << "Entering bookTrackMatchHistograms with dnmae=" << dname << std::endl;
+  fout_->cd();
+  fout_->mkdir("HitsRelated");
+  fout_->cd("HitsRelated");
+  new TH1D("numberTracks","#Tracks from Telescope;#tracks;#events",30,-0.5,29.5);
+  new TH1D("chi2","#Tracks from Telescope;#tracks;#events",30,-0.5,29.5);
+  new TH1D("UpDownHitsDeltaPos","#Delta strips (hits) between up/down sensorts;#Delta strips",7,-6.5,6.5);
+  new TH2D("NHitsCorrelation","Number of hits  upper vs lower;N Hits (lower sensor);N Hits (upper sensor)", 9,-0.5,8.5, 9,-0.5,8.5);
+  new TH2D("UpDownStrips","up vs down; hits strip (lower sensor); hits strip (upper sensor); ", 300,0,300, 300,0.,300);
+  new TH2D("NTracksVsBottomHits","Number of tracks vs N hits;N tracks;N Hits (lower sensor)", 4,-0.5,3.5, 9,-0.5,8.5);
+  new TH2D("NTracksVsUpperHits","Number of tracks vs N hits;N tracks;N Hits (upper sensor)", 4,-0.5,3.5, 9,-0.5,8.5);
+
+
+
+}
+
+
 void Histogrammer::bookTrackCommonHistograms() {
   fout_->cd();
   fout_->mkdir("TrackCommon");
@@ -439,6 +461,7 @@ void Histogrammer::bookTrackCommonHistograms() {
   h1f = dynamic_cast<TH1F*>(Utility::getHist1D("deltaYPos"));
   h1f->SetLineColor(kBlue);
  */
+
 
 
 
