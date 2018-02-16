@@ -58,6 +58,12 @@ void HitsAnalysis::eventLoop()
 
   long int den = 0;
   long int nClsb = 0, nClst = 0, numstub = 0;
+
+  int nhits10(0), nhit20(0);
+  int nhits11(0), nhit21(0);
+  int ncl10(0), ncl20(0);
+  int ncl11(0), ncl21(0);
+
   for (Long64_t jentry=0; jentry < maxEvent_; jentry++) {
     clearEvent();
     Long64_t ientry = analysisTree()->GetEntry(jentry);
@@ -108,38 +114,25 @@ void HitsAnalysis::eventLoop()
 	if (selectedTk.size()!=1) continue;
 	if (selectedTk[0].chi2()>5.) continue;
 	
-
-	double    deltaZ= 906.337945172601;
-	double    offset_d0= -18622.9485411593;
-	double    phi_d0= -0.506922749477349;
-	double    phi_d1= -0.505474817988975;
-	double    shiftPlan= 22.7418918040401;
-	double    theta= 0.145308624995022;
-	double    zDUT_d0= -576546.120619111;
-
-	//from Nicolas slide
-	// "deltaZ": 1730.337945172601,
-	// "offset_d0": -18622.9485411593,
-	// "phi_d0": -0.506922749477349,
-	// "phi_d1": -0.505474817988975,
-	// "shiftPlanes": 22.7418918040401,
-	// "theta": 0.145308624995022,
-	// "zDUT_d0": -326546.120619111
+	auto& tk0 = event()->tracks[0];
+	std::pair<double, double> xTkAtDUT_micron = Utility::extrapolateTrackAtDUTwithAngles(tk0, telPlaneprev_.z, offsetbottom(), zDUTbottom(), 
+											     sensordeltaZ(), dutangle(), shiftPlanes(), 
+											     bottomsensorPhi(), topsensorPhi());
 
 
-	std::pair<double, double> TrackPosAtDUT = Utility::extrapolateTrackAtDUTwithAngles(selectedTk[0], telPlaneprev_.z, 
-											   offset_d0, zDUT_d0,deltaZ, theta, shiftPlan, phi_d0, phi_d1);
-	
 	double D0xDUT;
 	double D1xDUT;
 	
 	if (d0Cls.size()==1){
 	  for(auto& cl : d0Cls ) {
 	    D0xDUT = (cl.center()-nStrips/2)*dutpitch();
+
+
+	    //std::cout<<" cl.center  "<< cl.center() << " track   "<<  (-xTkAtDUT_micron.first /1000/dutpitch() + nStrips/2) << std::endl; // --convert position to the strip number
 	    D0xDUT = -D0xDUT;
-	    if (cl.size()==1) {hist_->fillHist1D("HitsRelated","d0_1tk1Cls_1Hit_diffX_afterAlignment", D0xDUT-TrackPosAtDUT.first/1000.); }
-	    if (cl.size()==2) hist_->fillHist1D("HitsRelated","d0_1tk2Cls_1Hit_diffX_afterAlignment", D0xDUT-TrackPosAtDUT.first/1000.);
-	    hist_->fillHist1D("HitsRelated","d0_1tk1Cls_allHit_diffX_afterAlignment", D0xDUT-TrackPosAtDUT.first/1000.);
+	    if (cl.size()==1) {hist_->fillHist1D("HitsRelated","d0_1tk1Cls_1Hit_diffX_afterAlignment", D0xDUT-xTkAtDUT_micron.first/1000.); }
+	    if (cl.size()==2) hist_->fillHist1D("HitsRelated","d0_1tk2Cls_1Hit_diffX_afterAlignment", D0xDUT-xTkAtDUT_micron.first/1000.);
+	    hist_->fillHist1D("HitsRelated","d0_1tk1Cls_allHit_diffX_afterAlignment", D0xDUT-xTkAtDUT_micron.first/1000.);
 	  }
 	}
 	
@@ -149,12 +142,147 @@ void HitsAnalysis::eventLoop()
 	  for(auto& cl : d1Cls ) {
 	    D1xDUT = (cl.center()-nStrips/2)*dutpitch();
 	    D1xDUT = -D1xDUT;
-	    if (cl.size()==1) hist_->fillHist1D("HitsRelated","d1_1tk1Cls_1Hit_diffX_afterAlignment", D1xDUT-TrackPosAtDUT.second/1000.);
-	    if (cl.size()==2) hist_->fillHist1D("HitsRelated","d1_1tk2Cls_1Hit_diffX_afterAlignment", D1xDUT-TrackPosAtDUT.second/1000.);
-	    hist_->fillHist1D("HitsRelated","d1_1tk1Cls_allHit_diffX_afterAlignment", D1xDUT-TrackPosAtDUT.second/1000.);
+	    if (cl.size()==1) hist_->fillHist1D("HitsRelated","d1_1tk1Cls_1Hit_diffX_afterAlignment", D1xDUT-xTkAtDUT_micron.second/1000.);
+	    if (cl.size()==2) hist_->fillHist1D("HitsRelated","d1_1tk2Cls_1Hit_diffX_afterAlignment", D1xDUT-xTkAtDUT_micron.second/1000.);
+	    hist_->fillHist1D("HitsRelated","d1_1tk1Cls_allHit_diffX_afterAlignment", D1xDUT-xTkAtDUT_micron.second/1000.);
 	  }
 	}
-	
+  
+
+	//---------------------  matching efficiency --------------------------
+
+	// --------------------  clusters            ------------------------
+	double deltaXmatching_mm = 1;
+	if (d0Cls.size()==1){
+	  for(auto& cl : d0Cls ) {
+	    D0xDUT = -(cl.center()-nStrips/2)*dutpitch();
+	    int d0ClCenter = cl.center();
+	    if (cl.size()==1){
+	      hist_->fillHist1D("HitsRelated","d0_1tk1Cl_beforeMatch", d0ClCenter);
+	      if(fabs(D0xDUT - xTkAtDUT_micron.second/1000.) < deltaXmatching_mm) hist_->fillHist1D("HitsRelated","d0_1tk1Cl_afterMatch", d0ClCenter);
+	    }
+	    if (cl.size()==2){
+	      hist_->fillHist1D("HitsRelated","d0_1tk2Cl_beforeMatch", d0ClCenter);
+	      if(fabs(D0xDUT - xTkAtDUT_micron.second/1000.) < deltaXmatching_mm) hist_->fillHist1D("HitsRelated","d0_1tk2Cl_afterMatch", d0ClCenter);
+	    }
+	    hist_->fillHist1D("HitsRelated","d0_1tkAllCl_beforeMatch", d0ClCenter);
+	    if(fabs(D0xDUT - xTkAtDUT_micron.second/1000.) < deltaXmatching_mm) hist_->fillHist1D("HitsRelated","d0_1tkAllCl_afterMatch", d0ClCenter);
+	    hist_->fillHist1D("HitsRelated","ClusterSize", cl.size());
+	    if(fabs(D0xDUT - xTkAtDUT_micron.second/1000.) < deltaXmatching_mm){ hist_->fillHist1D("HitsRelated","MatchedClusterSize",cl.size() );
+		hist_->fillHist1D("HitsRelated","d0_Cluster_size_matched", cl.size()); 
+	      }
+	    hist_->fillHist1D("HitsRelated","d0_Cluster_size", cl.size()); 
+	  }
+	}
+
+
+	if (d1Cls.size()==1){
+	  for(auto& cl : d1Cls ) {
+	    D1xDUT = -(cl.center()-nStrips/2)*dutpitch();
+	    int d1ClCenter = cl.center();
+	    if (cl.size()==1){
+	      hist_->fillHist1D("HitsRelated","d1_1tk1Cl_beforeMatch", d1ClCenter);
+	      if(fabs(D1xDUT - xTkAtDUT_micron.second/1000.) < deltaXmatching_mm) hist_->fillHist1D("HitsRelated","d1_1tk1Cl_afterMatch", d1ClCenter);
+	    }
+	    if (cl.size()==2){
+	      hist_->fillHist1D("HitsRelated","d1_1tk2Cl_beforeMatch", d1ClCenter);
+	      if(fabs(D1xDUT - xTkAtDUT_micron.second/1000.) < deltaXmatching_mm) hist_->fillHist1D("HitsRelated","d1_1tk2Cl_afterMatch", d1ClCenter);
+	    }
+	    hist_->fillHist1D("HitsRelated","d1_1tkAllCl_beforeMatch", d1ClCenter);
+	    if(fabs(D1xDUT - xTkAtDUT_micron.second/1000.) < deltaXmatching_mm){ hist_->fillHist1D("HitsRelated","d1_1tkAllCl_afterMatch", d1ClCenter); 
+	      hist_->fillHist1D("HitsRelated","d1_Cluster_size_matched", cl.size()); 
+	    }
+	    hist_->fillHist1D("HitsRelated","d1_Cluster_size", cl.size()); 
+	  }
+	}
+ 
+
+	// --------------------  hits               ------------------------
+	int ntotalhits(0);
+	int nmatchedhits(0);
+	for(int i =0; i < d0c0.size(); i++) {
+	  ntotalhits++;
+	  double D0xDUT;
+	  D0xDUT = -(d0c0[i].strip()-nStrips/2)*dutpitch();
+	   if(fabs(D0xDUT - xTkAtDUT_micron.second/1000.) < deltaXmatching_mm)nmatchedhits++;
+	}
+	hist_->fillHist1D("HitsRelated" ,"NHits", ntotalhits);
+	hist_->fillHist1D("HitsRelated" ,"NMatchedHits", nmatchedhits);
+
+
+
+
+
+
+	if(d0c0.size() >0){
+	  
+	  nhits10++;
+	  double D0xDUT;
+
+
+
+	  if(d0c0.size()==1){
+	   
+	    int strip = d0c0[0].strip();
+	    D0xDUT = -(strip-nStrips/2)*dutpitch();
+	    hist_->fillHist1D("HitsRelated","d0_1tk1Hit_beforeMatch", strip);
+	    if(fabs(D0xDUT - xTkAtDUT_micron.second/1000.) < deltaXmatching_mm) hist_->fillHist1D("HitsRelated","d0_1tk1Hit_afterMatch",strip );
+	  }
+	  if(d0c0.size()==2){
+	   
+	    int strip = (d0c0[0].strip() + d0c0[1].strip() )*0.5;
+	    D0xDUT = -(strip-nStrips/2)*dutpitch();
+	    hist_->fillHist1D("HitsRelated","d0_1tk2Hit_beforeMatch", strip);
+	    if(fabs(D0xDUT - xTkAtDUT_micron.second/1000.) < deltaXmatching_mm) hist_->fillHist1D("HitsRelated","d0_1tk2Hit_afterMatch",strip );
+	  }
+	  if(d0c0.size()==3){
+	    int strip = (d0c0[0].strip() + d0c0[2].strip() )*0.5;
+	    D0xDUT = -(strip-nStrips/2)*dutpitch();
+	    hist_->fillHist1D("HitsRelated","d0_1tk3Hit_beforeMatch", strip);
+	    if(fabs(D0xDUT - xTkAtDUT_micron.second/1000.) < deltaXmatching_mm){ hist_->fillHist1D("HitsRelated","d0_1tk3Hit_afterMatch",strip ); }
+	  }
+	  if(d0c0.size()==1 || d0c0.size()==2  || d0c0.size()==3  ){//|| d0c0.size()==4 || d0c0.size()==5  || d0c0.size()==6  || d0c0.size()==7 || d0c0.size()==8  || d0c0.size()==9   ){
+	    hist_->fillHist1D("HitsRelated","Hits_det0", 1);
+	    if(fabs(D0xDUT - xTkAtDUT_micron.second/1000.) < deltaXmatching_mm){  hist_->fillHist1D("HitsRelated","Hits_det0_matched", 1);}
+	  }
+
+	}
+
+
+
+	if(d1c0.size() >0){
+	  
+	  nhits11++;
+	  double D1xDUT;
+	  if(d1c0.size()==1){
+	    int strip = d0c0[0].strip();
+	    D1xDUT = -(strip-nStrips/2)*dutpitch();
+	    hist_->fillHist1D("HitsRelated","d1_1tk1Hit_beforeMatch", strip);
+	    if(fabs(D1xDUT - xTkAtDUT_micron.second/1000.) < deltaXmatching_mm) hist_->fillHist1D("HitsRelated","d1_1tk1Hit_afterMatch",strip );
+	  }
+	  if(d1c0.size()==2){
+	    int strip = (d1c0[0].strip() + d1c0[1].strip() )*0.5;
+	    D1xDUT = -(strip-nStrips/2)*dutpitch();
+	    hist_->fillHist1D("HitsRelated","d1_1tk2Hit_beforeMatch", strip);
+	    if(fabs(D1xDUT - xTkAtDUT_micron.second/1000.) < deltaXmatching_mm) hist_->fillHist1D("HitsRelated","d1_1tk2Hit_afterMatch",strip );
+	  }
+	  if(d1c0.size()==3){
+
+	    int strip = (d1c0[0].strip() + d1c0[2].strip() )*0.5;
+	    D1xDUT = -(strip-nStrips/2)*dutpitch();
+	    hist_->fillHist1D("HitsRelated","d1_1tk3Hit_beforeMatch", strip);
+	    if(fabs(D1xDUT - xTkAtDUT_micron.second/1000.) < deltaXmatching_mm){ hist_->fillHist1D("HitsRelated","d1_1tk3Hit_afterMatch",strip );}
+	  }
+
+	  if(d1c0.size()==1 || d1c0.size()==2  || d1c0.size()==3 ){//|| d1c0.size()==4 || d1c0.size()==5  || d1c0.size()==6  || d1c0.size()==7 || d1c0.size()==8  || d1c0.size()==9   ){
+	    hist_->fillHist1D("HitsRelated","Hits_det1", 1);
+	    if(fabs(D0xDUT - xTkAtDUT_micron.second/1000.) < deltaXmatching_mm){  hist_->fillHist1D("HitsRelated","Hits_det1_matched", 1);}
+	      }
+	}
+
+
+
+
 
 
 	hist_->fillHist1D("HitsRelated","numberTracks", event()->tracks.size());
@@ -162,18 +290,6 @@ void HitsAnalysis::eventLoop()
 	hist_->fillHist2D("HitsRelated", "NTracksVsUpperHits", event()->tracks.size(), d1c0.size());
 	
 	
-	// resultBothPlanesConstraintShiftPhi[0] = offsetbottom();
-	// resultBothPlanesConstraintShiftPhi[1] = zDUTbottom();  
-	// resultBothPlanesConstraintShiftPhi[2] = sensordeltaZ();
-	// resultBothPlanesConstraintShiftPhi[3] = dutangle();
-	// resultBothPlanesConstraintShiftPhi[4] = shiftPlanes();
-	// resultBothPlanesConstraintShiftPhi[5] = bottomsensorPhi();
-	// resultBothPlanesConstraintShiftPhi[6] = topsensorPhi();
-	
-
-	// std::pair<double, double> xTkAtDUT11 = Utility::extrapolateTrackAtDUTwithAngles(selectedTk[0], refPlaneZ, offsetbottom(), resultBothPlanesConstraintShiftPhi[1], resultBothPlanesConstraintShiftPhi[2], resultBothPlanesConstraintShiftPhi[3], resultBothPlanesConstraintShiftPhi[4], resultBothPlanesConstraintShiftPhi[5], resultBothPlanesConstraintShiftPhi[6]);
-
-	//	std::vector<tbeam::OfflineTrack> selectedTk = event()->tracks;
     if(event()->tracks.size()==1)
       {
 	setDetChannelVectors();
@@ -229,7 +345,7 @@ void HitsAnalysis::eventLoop()
 	      for(auto& cl : d0Cls ) {
 		float	D0xDUT = (cl.center()-nStrips/2)*dutpitch();
 		D0xDUT = -D0xDUT;
-		if (cl.size()==1) hist_->fillHist1D("HitsRelated","AllignmentTest", D0xDUT-TrackPosAtDUT.first/1000.);
+		if (cl.size()==1) hist_->fillHist1D("HitsRelated","AllignmentTest", D0xDUT-xTkAtDUT_micron.first/1000.);
 	      }
 	    }
        
@@ -250,7 +366,7 @@ void HitsAnalysis::eventLoop()
 	    // std::cout<<"   size 1 "<< d1c0.size() << " strip  "  << d1c0[0].strip()<<std::endl;
 
 
-	    //	    std::cout<<"sizes:    "<< d0c0.size() << "    " <<d1c0.size() <<" strip  "  << d0c0[0].strip()<<"   " <<d1c0[0].strip()<<std::endl;
+	    //   std::cout<<"sizes:    "<< d0c0.size() << "    " <<d1c0.size() <<" strip  "  << d0c0[0].strip()<<"   " <<d1c0[0].strip()<<std::endl;
 	  }
 	}
       }
@@ -282,11 +398,32 @@ void HitsAnalysis::eventLoop()
     //xTkAtDUT.first will give the position of the track on  bottom sensor
     //xTkAtDUT.second will give the position of the track on top sensor
     // std::pair<double, double> xTkAtDUT = Utility::extrapolateTrackAtDUTwithAngles(tk, m.z, offsetbottom(), zDUTbottom(), sensordeltaZ(), dutangle(), shiftPlanes());
-    std::pair<double, double> xTkAtDUT = Utility::extrapolateTrackAtDUTwithAngles(tk, telPlaneprev_.z, offsetbottom(), zDUTbottom(),sensordeltaZ(), dutangle(), shiftPlanes(), bottomsensorPhi(), topsensorPhi());
+    std::pair<double, double> xTkAtDUT = xTkAtDUT_micron;//Utility::extrapolateTrackAtDUTwithAngles(tk, telPlaneprev_.z, offsetbottom(), zDUTbottom(),sensordeltaZ(), dutangle(), shiftPlanes(), bottomsensorPhi(), topsensorPhi());
     //std::cout<<"first second   "<< xTkAtDUT.first<<"  "<< xTkAtDUT.second <<std::endl;
     //extrapolate along y direction
-    float yTkAtDUT_bottom = tk.yPos(); + (zDUTbottom() - m.z)*tk.dydz();
-    float yTkAtDUT_top    = tk.yPos(); + (zDUTbottom() + sensordeltaZ() - m.z)*tk.dydz();
+    float yTkAtDUT_bottom = ( tk.yPosPrevHit() + (zDUTbottom() - m.z)*tk.dydz() )/1000.;
+    float yTkAtDUT_top = ( tk.yPosPrevHit() + (zDUTbottom() + sensordeltaZ() - m.z)*tk.dydz() )/1000.;
+
+  
+    if(d0c0.size()==1){
+      int strip = d0c0[0].strip();
+      D0xDUT = -(strip-nStrips/2)*dutpitch();
+      //std::cout<<" yTkAtDUT_bottom  " << yTkAtDUT_bottom <<" D0xDUT  " <<D0xDUT << "  " << xTkAtDUT.first/1000<< std::endl;
+      hist_->fillHist2D("HitsRelated", "HitsScanLower", strip, yTkAtDUT_bottom);
+    }
+   if(d1c0.size()==1){
+      int strip = d1c0[0].strip();
+      D1xDUT = -(strip-nStrips/2)*dutpitch();
+      //std::cout<<" yTkAtDUT_bottom  " << yTkAtDUT_bottom <<" D0xDUT  " <<D0xDUT << "  " << xTkAtDUT.first/1000<< std::endl;
+      hist_->fillHist2D("HitsRelated", "HitsScanUpper", strip, yTkAtDUT_top);
+    }
+
+
+
+
+   
+    // float yTkAtDUT_bottom = tk.yPos() + (zDUTbottom() - m.z)*tk.dydz();
+    // float yTkAtDUT_top    = tk.yPos() + (zDUTbottom() + sensordeltaZ() - m.z)*tk.dydz();
     hist_->fillHist1D(dnamebottom, "tkposx", xTkAtDUT.first);
     hist_->fillHist1D(dnametop,    "tkposx", xTkAtDUT.second); 
     //convert tk xpos to strip number

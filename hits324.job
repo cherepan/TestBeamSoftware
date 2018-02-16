@@ -1,7 +1,7 @@
 #START
-Run=317
-inputFile=/home-pbs/vcherepa/cms_work/BeamTest/CMSSW_9_2_3/src/Ntuples/AnalysisTree_000317.root
-outputFile=Hits317.root
+Run=324
+inputFile=/home-pbs/vcherepa/cms_work/BeamTest/CMSSW_9_2_3/src/Ntuples/AnalysisTree_000324.root
+outputFile=Hits324.root
 doTelescopeMatching=1
 doChannelMasking_=0
 channelMaskFile=chmask.txt
@@ -12,7 +12,7 @@ pitchDUT=0.09
 geomFile=geometryFnal.json
 #only needed by Alignment Analysis
 isProductionmode=0
-alignmentOutputFile=alignmentparOutput_000317.json
+alignmentOutputFile=alignmentparOutput_000324.json
 #For analysis with track match
 readAlignmentFromfile=1
 #END

@@ -3,7 +3,7 @@
 
 #include "TDirectory.h"
 #include "TProfile.h"
-#include "TFile.h"
+#include "TFile.h" 
 #include "Utility.h"
 //#include "DataFormats.h"
 #include "Event.h"
@@ -14,6 +14,7 @@ class Histogrammer {
     Histogrammer(std::string& outFile);
     virtual ~Histogrammer();
     void bookEventHistograms();
+    void bookHitsRelatedHistograms();
     void bookDUTHistograms(std::string det);
     void bookDUTHistoForColumn(TString& d, TString c);
     void bookStubHistograms(std::string& d) {
@@ -31,7 +32,7 @@ class Histogrammer {
 
     //histograms for common track propoerties
     void bookTrackCommonHistograms();
-    void bookHitsRelatedHistograms();
+
     //Histograms to be used by alignment analysis
     void bookTrackFitHistograms(TString& detId, float zMin = 0., float zStep = 0., int zNsteps = 0);
     void FillAlignmentOffsetVsZ(const char*, const char*, int, float, float, float);

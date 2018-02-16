@@ -10,7 +10,7 @@ using std::endl;
 
 int main( int argc,char* argv[] ){
   if(argc<2)  {
-    std::cout << "Jobcard missing.\n./baselinReco <jobcardname>" << std::endl;
+    std::cout << "Jobcard missing.\n./baselinHits <jobcardname>" << std::endl;
     return 1;
   }
   std::string jobfile = argv[1];

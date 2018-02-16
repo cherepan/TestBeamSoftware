@@ -316,6 +316,92 @@ void Histogrammer::bookCorrelationHistograms(TString& modId) {
   bookCorrelationHistoForColumn("C0");
   //bookCorrelationHistoForColumn("C1");
 }
+void Histogrammer::bookHitsRelatedHistograms()
+{
+  int nStrips = 254;
+  TString dname =  "HitsRelated";
+  //std::cout << "Entering bookTrackMatchHistograms with dnmae=" << dname << std::endl;
+  fout_->cd();
+  fout_->mkdir("HitsRelated");
+  fout_->cd("HitsRelated");
+  new TH1D("numberTracks","#Tracks from Telescope;#tracks;#events",30,-0.5,29.5);
+  new TH1D("chi2","#Tracks from Telescope;#tracks;#events",30,-0.5,29.5);
+  new TH1D("UpDownHitsDeltaPos","#Delta strips (hits) between up/down sensorts;#Delta strips",7,-6.5,6.5);
+  new TH2D("NHitsCorrelation","Number of hits  upper vs lower;N Hits (lower sensor);N Hits (upper sensor)", 9,-0.5,8.5, 9,-0.5,8.5);
+  new TH2D("UpDownStrips","up vs down; hits strip (lower sensor); hits strip (upper sensor); ", 300,0,300, 300,0.,300);
+  new TH2D("NTracksVsBottomHits","Number of tracks vs N hits;N tracks;N Hits (lower sensor)", 4,-0.5,3.5, 9,-0.5,8.5);
+  new TH2D("NTracksVsUpperHits","Number of tracks vs N hits;N tracks;N Hits (upper sensor)", 4,-0.5,3.5, 9,-0.5,8.5);
+
+  new TH1D("AllignmentTest","#AlloignemtnCheck;#tracks;#events",7,-6.5,6.5);
+  new TH1D("d0_1tk1Cls_1Hit_diffX_afterAlignment","#d0_1tk1Cls_1Hit  ;#Delta X;events",50,-0.2,0.2);
+  new TH1D("d0_1tk2Cls_1Hit_diffX_afterAlignment","#d0_1tk1Cls_1Hit  ;#Delta X;events",50,-0.2,0.2);
+  new TH1D("d0_1tk1Cls_allHit_diffX_afterAlignment","#d0_1tk1Cls_allHit  ;#Delta X;events",50,-0.2,0.2);
+  new TH1D("d1_1tk1Cls_1Hit_diffX_afterAlignment","#d1_1tk1Cls_1Hit  ;#Delta X;events",50,-0.2,0.2);
+  new TH1D("d1_1tk2Cls_1Hit_diffX_afterAlignment","#d1_1tk1Cls_1Hit  ;#Delta X;events",50,-0.2,0.2);
+  new TH1D("d1_1tk1Cls_allHit_diffX_afterAlignment","#d1_1tk1Cls_allHit  ;#Delta X;events",50,-0.2,0.2);
+
+  new TH1D("d0_1tk1Cl_beforeMatch","d0_1tk1Cl_beforeMatch; cluster center; events",256,0,256);
+  new TH1D("d0_1tk1Cl_afterMatch","d0_1tk1Cl_afterMatch; cluster center; events",256,0,256);
+ 
+  new TH1D("d0_1tk2Cl_beforeMatch","d0_1tk1Cl_beforeMatch; cluster center; events",256,0,256);
+  new TH1D("d0_1tk2Cl_afterMatch","d0_1tk1Cl_afterMatch; cluster center; events",256,0,256);
+
+  new TH1D("d0_1tkAllCl_beforeMatch","d0_1tk1Cl_beforeMatch; cluster center; events",256,0,256);
+  new TH1D("d0_1tkAllCl_afterMatch","d0_1tk1Cl_afterMatch; cluster center; events",256,0,256);
+
+  new TH1D("d1_1tk1Cl_beforeMatch","d1_1tk1Cl_beforeMatch; cluster center; events",256,0,256);
+  new TH1D("d1_1tk1Cl_afterMatch","d1_1tk1Cl_afterMatch; cluster center; events",256,0,256);
+ 
+  new TH1D("d1_1tk2Cl_beforeMatch","d1_1tk2Cl_beforeMatch; cluster center; events",256,0,256);
+  new TH1D("d1_1tk2Cl_afterMatch","d1_1tk2Cl_afterMatch; cluster center; events",256,0,256);
+
+  new TH1D("d1_1tkAllCl_beforeMatch","d1_1tkAllCl_beforeMatch; cluster center; events",256,0,256);
+  new TH1D("d1_1tkAllCl_afterMatch","d1_1tkAllCl_afterMatch; cluster center; events",256,0,256);
+
+  new TH1D("d0_1tk1Hit_beforeMatch","d0_1tk1Hit_beforeMatch ;hit strip; events",256,0,256);
+  new TH1D("d0_1tk1Hit_afterMatch","d0_1tk1Hit_afterMatch ;hit strip; events",256,0,256);
+
+  new TH1D("d0_1tk2Hit_beforeMatch","d0_1tk2Hit_beforeMatch ;hit strip; events",256,0,256);
+  new TH1D("d0_1tk2Hit_afterMatch"," d0_1tk2Hit_afterMatch;hit strip; events",256,0,256);
+
+  new TH1D("d0_1tk3Hit_beforeMatch","d0_1tk3Hit_beforeMatch ;hit strip; events",256,0,256);
+  new TH1D("d0_1tk3Hit_afterMatch","d0_1tk3Hit_afterMatch ;hit strip; events",256,0,256);
+
+  new TH1D("d1_1tk1Hit_beforeMatch","d1_1tk1Hit_beforeMatch ;hit strip; events",256,0,256);
+  new TH1D("d1_1tk1Hit_afterMatch","d1_1tk1Hit_afterMatch ;hit strip; events",256,0,256);
+
+
+  new TH1D("d1_1tk2Hit_beforeMatch","d1_1tk2Hit_beforeMatch ;hit strip; events",256,0,256);
+  new TH1D("d1_1tk2Hit_afterMatch","d1_1tk2Hit_afterMatch ;hit strip; events",256,0,256);
+
+
+  new TH1D("d1_1tk3Hit_beforeMatch","d1_1tk3Hit_beforeMatch ;hit strip; events",256,0,256);
+  new TH1D("d1_1tk3Hit_afterMatch","d1_1tk3Hit_afterMatch ;hit strip; events",256,0,256);
+
+  new TH1D("MatchedClusterSize","MatchedClusterSize ;cluster size [strips]; events",40,0,40);
+  new TH1D("ClusterSize","ClusterSize ;cluster size [strips]; events",40,0,40);
+
+  new TH1D("Hits_det0","Hits_det0 ;cluster size [strips]; events",1,0.5,1.5);
+  new TH1D("Hits_det0_matched","Hits_det0_matched ;cluster size [strips]; events",1,0.5,1.5);
+
+  new TH1D("Hits_det1","Hits_det1 ;cluster size [strips]; events",1,0.5,1.5);
+  new TH1D("Hits_det1_matched","Hits_det1_matched ;cluster size [strips]; events",1,0.5,1.5);
+
+  new TH1D("NHits","NHits;NHits ; events",10,0,10);
+  new TH1D("NMatchedHits","NMatchedHits;NMatchedHits; events",10,0,10);
+
+  new TH2D("HitsScanLower","scan; hits strip (upper sensor); ", 254,0,254, 50,0.,50);
+  new TH2D("HitsScanUpper","scan; hits strip (upper sensor); ", 254,0,254, 50,0.,50);
+
+  new TH1D("d0_Cluster_size_matched","d0_Cluster_size_matched ;hit strip; events",10,0,10);
+  new TH1D("d0_Cluster_size","d0_Cluster_size ;hit strip; events",10,0,10);
+
+  new TH1D("d1_Cluster_size_matched","d1_Cluster_size_matched ;hit strip; events",10,0,10);
+  new TH1D("d1_Cluster_size","d1_Cluster_size ;hit strip; events",10,0,10);
+
+
+}
+
 
 void Histogrammer::bookCorrelationHistoForColumn(TString c) {
   //new TH1D("nhitscorrelation" + c,"Sensor #Hits Correlation " + c, 4, 0.5, 4.5);
@@ -456,13 +542,13 @@ void Histogrammer::bookTrackMatchHistograms(TString& detId)
   new TH1D("tkposx","Xpos of etrapolated track; x [mm]; Events [a.u]",60/(250e-3),-30.,30.);
   new TH1D("tkposy","Ypos of etrapolated track; x [mm]; Events [a.u]",60/(250e-3),-30.,30.);
   //new TH1D("hitresidualX","Residual of extrapolated track(prev plane) with respect to hit(offset corrected); corrected residual [mm]; Events [a.u]",80/(50e-3),-20.,20.);
-  new TH1D("clusresidualX","Residual of extrapolated track(prev plane) with respect to cluster(offset corrected); corrected residual [mm]; Events [a.u]",100000,-100,100);
-  new TH1D("stubresidualX","Residual of extrapolated track(prev plane) with respect to stub(offset corrected); corrected residual [mm]; Events [a.u]",100000,-100,100);
+  new TH1D("clusresidualX","Residual of extrapolated track(prev plane) with respect to cluster(offset corrected); corrected residual [mm]; Events [a.u]",80/(50e-3),-20.,20.);
+  new TH1D("stubresidualX","Residual of extrapolated track(prev plane) with respect to stub(offset corrected); corrected residual [mm]; Events [a.u]",80/(50e-3),-20.,20.);
 
   new TH2D("moduleSize_Cluster",";cluster position [strip]; yTrack at DUT{Track} [mm]", 1016, -0.5, 1015.5, 100, 1., 100. );
 
-  new TH1F("trackpos_strip","Extrapolated Track position on sensor; track position[strips]; #tracks ", 1016, -0.5, 1015.5);
-  new TH1F("matchedclusterpos_strip","Mateched cluster position on sensor; cluster position; ;#clusters ", 1016, -0.5, 1015.5);
+  new TH1F("trackpos_strip","Extrapolated Track position on sensor;#tracks; track position", 1016, -0.5, 1015.5);
+  new TH1F("matchedclusterpos_strip","Mateched cluster position on sensor;#clusters; cluster position", 1016, -0.5, 1015.5);
   //Consult with other analysers about which ones to keep --- REMOVE Duplicates
 
 /*
